@@ -7,6 +7,8 @@ using MetadataExtractor.Formats.Exif;
 using System.Linq;
 using System.Text;
 using System.IO;
+using System.Xml;
+using System.Net;
 
 namespace ImageProcessor
 {
@@ -97,28 +99,70 @@ namespace ImageProcessor
                 {
                     return imagefileinfo.LastWriteTime;
                 }
-
             }
             else
                 return imagefileinfo.LastWriteTime;
         }
 
-        public double[] GPSExtractor(FileInfo imagefileinfo)  //вариант получения метаданных с помощью стороннего пакета
+        public GeoLocation GPSExtractor(FileInfo imagefileinfo)  //вариант получения метаданных с помощью стороннего пакета
         {
-
-            var metainfo = ImageMetadataReader.ReadMetadata(imagefileinfo.FullName);            
+            var metainfo = ImageMetadataReader.ReadMetadata(imagefileinfo.FullName);
             var gpsDirectory = metainfo.OfType<GpsDirectory>().FirstOrDefault();
 
             try
             {
                 var gpsLocation = gpsDirectory.GetGeoLocation();
-                double[] arr = { gpsLocation.Latitude, gpsLocation.Longitude };
-                Console.WriteLine($"\n\n {imagefileinfo.FullName}   \n{gpsLocation.Latitude}\n {gpsLocation.Longitude}");
-                return arr;
+                //Console.WriteLine($"\n\n {imagefileinfo.FullName}   \n{gpsLocation.Latitude}\n {gpsLocation.Longitude}");
+                return gpsLocation;
             }
             catch (NullReferenceException)
             {
                 return null;
+            }
+        }
+
+        public void SortImageByLokality()
+        {
+            for (int i = 0; i < ImageFilesInfo.Length; i++)
+            {
+                var gps = this?.GPSExtractor(ImageFilesInfo[i]);
+
+                System.IO.Directory.CreateDirectory(ImageFilesInfo[0].DirectoryName + "SortImageByLokality");
+                System.IO.Directory.SetCurrentDirectory(ImageFilesInfo[0].DirectoryName + "SortImageByLokality");
+
+                if (gps != null)
+                {
+                    HttpWebRequest reg = (HttpWebRequest)WebRequest
+                        .Create(@"https://geocode-maps.yandex.ru/1.x/?geocode=" + gps.Longitude + "," + gps.Latitude + "&kind=locality&results=1");
+                    HttpWebResponse response = (HttpWebResponse)reg.GetResponse();
+
+                    using (Stream responsestream = response.GetResponseStream())
+                    {
+                        XmlDocument xmlRespond = new XmlDocument();
+                        xmlRespond.Load(responsestream);
+
+                        // XmlNamespaceManager namespaces = new XmlNamespaceManager(xmlRespond.NameTable);
+
+                        //namespaces.AddNamespace("ns1", "urn: oasis:names: tc:ciq: xsdschema:xAL: 2.0");
+                        //namespaces.AddNamespace("ns2", "http://maps.yandex.ru/geocoder/1.x");
+                        //namespaces.AddNamespace("ns3", "http://www.opengis.net/gml");
+                        //namespaces.AddNamespace("ns4", "http://maps.yandex.ru/ymaps/1.x");
+
+                        //XmlNode localityName;
+                        //XmlNode root = xmlRespond.DocumentElement;
+                        //localityName = root.SelectSingleNode("//ns4:LocalityName", namespaces);        //никак не догоняю Xpath...
+
+                        var nam = xmlRespond.InnerXml;
+                        int first = nam.IndexOf(@"<localityname>", StringComparison.CurrentCultureIgnoreCase) + 14;
+                        int last = nam.LastIndexOf(@"</localityname>", StringComparison.CurrentCultureIgnoreCase);
+                        nam = nam.Substring(first, last - first);
+
+                        System.IO.Directory.CreateDirectory(nam);
+                        ImageFilesInfo[i].CopyTo(Path.Combine(nam, ImageFilesInfo[i].Name), true);
+                    }
+                }
+                else
+                    continue;
             }
         }
     }

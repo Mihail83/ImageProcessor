@@ -25,10 +25,10 @@ namespace ImageProcessor
                 if (imageInfo1.pathExist)
                 {
                     Console.WriteLine(" переименовать по дате съемки - 1\n добавить пометку с датой на фото - 2\n " +
-                       "сортировка по году съемки  - 3\n");
+                       "сортировка по году съемки  - 3\n сортировка по месту съемки -  4\n");
                 }
 
-                switch (Console.ReadKey().KeyChar)
+                switch (Console.ReadKey(true).KeyChar)
                 {
                     case 's':
                     case 'S':
@@ -40,26 +40,27 @@ namespace ImageProcessor
                         return;
 
                     case '1' when imageInfo1.pathExist:
+                        Console.WriteLine("Работает пункт 1");
                         var renameImage1 = new RenameAndReplaceImage(imageInfo1.ImageFilesInfo);
                         renameImage1.ChangeNameByDate();
                         break;
 
                     case '2' when imageInfo1.pathExist:
+                        Console.WriteLine("Работает пункт 2");
                         var addDateToImage = new ImageWithData(imageInfo1.ImageFilesInfo);
                         addDateToImage.AddDateToImage();
                         break;
 
                     case '3' when imageInfo1.pathExist:
+                        Console.WriteLine("Работает пункт 3");
                         var sortbyyear = new SortByYear(imageInfo1.ImageFilesInfo);
                         sortbyyear.SortImageByYear();
                         break;
 
-                    case '4' when imageInfo1.pathExist:   //
-                        for (int i = 0; i < imageInfo1.ImageFilesInfo.Length; i++)
-                        {
-                            double[] arr = imageInfo1?.GPSExtractor(imageInfo1.ImageFilesInfo[i]);
-                        }
-                        Console.ReadKey();
+                    case '4' when imageInfo1.pathExist:
+                        Console.WriteLine("Работает пункт 4");
+                        imageInfo1.SortImageByLokality();
+                        
                         break;
 
                     default:
